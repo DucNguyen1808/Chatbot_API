@@ -11,6 +11,14 @@ class UserController {
       next(err);
     }
   }
+  async getAllProfile(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const user = await User.find();
+      res.status(200).json(user);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 const userController = new UserController();

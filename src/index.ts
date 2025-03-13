@@ -3,6 +3,7 @@ import errorHandler from './middlewares/errorHandler';
 import routes from '../src/routes';
 import { connectMongoDB } from './config/db';
 import * as createError from 'http-errors';
+
 import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -15,6 +16,8 @@ routes(app);
 app.use((req, res, next) => {
   next(createError.NotFound());
 });
+console.log(process.env.API_KEY);
+console.log(process.env.BASE_URL_CHAT_BOT);
 app.use(errorHandler);
 connectMongoDB();
 app.listen(port, () => {
