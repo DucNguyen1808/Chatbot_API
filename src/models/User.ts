@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { Schema, model } from 'mongoose';
+import mongoose, { Schema, model } from 'mongoose';
 export interface IUser {
   name?: string;
   email: string;
@@ -7,6 +7,7 @@ export interface IUser {
   password: string;
   google_id?: string;
   checkPassword: (password: string) => Promise<boolean>;
+  conversation: [mongoose.Types.ObjectId];
 }
 const userSchema = new Schema<IUser>(
   {
@@ -14,7 +15,8 @@ const userSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true },
     avatar: String,
     password: { type: String, required: true, minlength: 8 },
-    google_id: String
+    google_id: String,
+    conversation: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' }]
   },
   { timestamps: true }
 );

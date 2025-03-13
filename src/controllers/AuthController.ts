@@ -3,8 +3,7 @@ import User from '~/models/User';
 import { createAccsesToken, createRefreshToken, verifyRefreshToken } from '~/utils/jwt';
 import getBearerToken from '~/utils/getBearerToken';
 import { LoginsChema, RegisterChema } from '~/validations/AuthValidate';
-import { error } from 'console';
-const EXPIRES_IN = 600000;
+const EXPIRES_IN = 24 * 60 * 60 * 1000;
 class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
@@ -23,7 +22,7 @@ class AuthController {
       }
       const ispassword = await user.checkPassword(password);
       console.log(ispassword);
-      if (!ispassword) {
+      if (ispassword) {
         res.status(401).json({ status_code: 404, message: 'Sai mật khẩu' });
         return;
       }

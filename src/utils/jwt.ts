@@ -9,7 +9,7 @@ export const createAccsesToken = (payload: object | string): Promise<string> => 
       payload,
       process.env.ACCESS_TOKEN_SECRET as string,
       {
-        expiresIn: '15m'
+        expiresIn: '1d'
       },
       (error, token) => {
         if (error) rej(error);
