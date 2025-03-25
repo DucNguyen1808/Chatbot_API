@@ -8,6 +8,7 @@ export interface IUser {
   google_id?: string;
   checkPassword: (password: string) => Promise<boolean>;
   conversation: [mongoose.Types.ObjectId];
+  role: 'user' | 'admin';
 }
 const userSchema = new Schema<IUser>(
   {
@@ -16,7 +17,8 @@ const userSchema = new Schema<IUser>(
     avatar: String,
     password: { type: String, required: true, minlength: 8 },
     google_id: String,
-    conversation: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' }]
+    conversation: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' }],
+    role: { type: String, enum: ['user', 'admin'], default: 'user' }
   },
   { timestamps: true }
 );
@@ -25,8 +27,7 @@ userSchema.methods.checkPassword = async function (password: string) {
   return result;
 };
 userSchema.pre('save', function () {
-  const salt = bcrypt.genSaltSync(10);
-  this.password = bcrypt.hashSync(this.password, salt);
+  this.password = bcrypt.hashSync(this.password);
 });
 const User = model<IUser>('User', userSchema);
 
