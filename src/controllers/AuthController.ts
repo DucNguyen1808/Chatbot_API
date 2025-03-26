@@ -21,7 +21,7 @@ class AuthController {
         return;
       }
       const ispassword = await user.checkPassword(password);
-      if (!ispassword) {
+      if (ispassword) {
         res.status(401).json({ status_code: 404, message: 'Sai mật khẩu' });
         return;
       }

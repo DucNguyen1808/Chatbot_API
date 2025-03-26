@@ -3,7 +3,6 @@ import chatBotController from '~/controllers/ChatBotController';
 import checkAdmin from '~/middlewares/checkAdmin';
 import { verifyAccsesToken } from '~/utils/jwt';
 const messagesRouter = express.Router();
-
 messagesRouter.post('/chat-messages', chatBotController.chatMessages);
 messagesRouter.get('/get-Conversation', chatBotController.getConversationByUser);
 messagesRouter.get('/get-history', chatBotController.getListChatByUser);
