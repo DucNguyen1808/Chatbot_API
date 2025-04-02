@@ -14,4 +14,5 @@ messagesRouter.get('/export-excel', verifyAccsesToken, checkAdmin, chatBotContro
 
 messagesRouter.patch('/feedback', verifyAccsesToken, chatBotController.feedback);
 messagesRouter.delete('/conversation/:id', verifyAccsesToken, chatBotController.delete);
+messagesRouter.patch('/conversation/store/:id', verifyAccsesToken, chatBotController.store);
 export default messagesRouter;
