@@ -3,6 +3,7 @@ import authRouter from './authRouter';
 import userRouter from './userRouter';
 import messagesRouter from './messagesRouter';
 import promptRouter from './promptRouter';
+import iframeRouter from './iframeRouter';
 
 function routes(app: Application) {
   app.get('/api', (req, res) => {
@@ -14,6 +15,7 @@ function routes(app: Application) {
   app.use('/api/', userRouter);
   app.use('/api/chat/', messagesRouter);
   app.use('/api/prompt', promptRouter);
+  app.use('/api/iframe', iframeRouter);
 }
 
 export default routes;

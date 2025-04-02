@@ -1,13 +1,55 @@
 import { NextFunction, Response } from 'express';
-import { Mesages } from '~/models/Conversation';
 import Prompt from '~/models/Prompt';
 import AuthenticatedRequest from '~/types/AuthenticatedRequest';
+import { getTimeFilter } from '~/utils/getTimeFilter';
 import { PromptsChema } from '~/validations/promptValidate';
 
 class PromptController {
   async index(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const prompt = await Prompt.find();
+      const query = req.query;
+      const q = query.q || '';
+      const { timeFilter } = req.query as { timeFilter?: string };
+      const filter = getTimeFilter(timeFilter || '');
+      const { sortBy = 'createdAt', order = 'desc' } = req.query;
+      const sortOrder = order === 'asc' ? 1 : -1;
+      let items;
+
+      const page = parseInt(query.page as string) || 1;
+      const limit = parseInt(query.limit as string) || 10;
+      const totalItems = await Prompt.countDocuments();
+      const totalPages = Math.ceil(totalItems / limit);
+      if (q != '') {
+        items = await Prompt.find({ content: { $regex: q, $options: 'i' } }).sort({
+          [sortBy.toString()]: sortOrder
+        });
+      } else {
+        items = await Prompt.find(filter)
+          .sort({ [sortBy.toString()]: sortOrder })
+          .skip((page - 1) * limit)
+          .limit(limit);
+      }
+
+      res.status(200).json({
+        page,
+        limit,
+        totalPages,
+        totalItems,
+        data: items
+      });
+      return;
+    } catch (err) {
+      next(err);
+    }
+  }
+  async show(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id;
+      const prompt = await Prompt.findById(id);
+      if (!prompt) {
+        res.status(404).json({ mesages: 'Prompt not exist' });
+        return;
+      }
       res.status(200).json({ data: prompt });
     } catch (err) {
       next(err);

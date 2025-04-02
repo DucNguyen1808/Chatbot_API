@@ -60,13 +60,12 @@ class ChatBotController {
   async getConversationByUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       console.log(req.query.q);
-      const name = req.query.q as string;
-      const user = await User.findById(req.query.user_id)
-        .populate({
-          path: 'conversation',
-          match: name ? { name: new RegExp(name, 'i') } : {} // Tìm kiếm theo name nếu có
-        })
-        .exec();
+      const q = req.query.q as string;
+      const user = await User.findById(req.query.user_id).populate({
+        path: 'conversation',
+        match: q ? { name: new RegExp(q, 'i') } : undefined // Tìm kiếm theo name nếu có
+      });
+
       if (!user) {
         next(createHttpError(404, 'User does not exist!'));
         return;
@@ -150,6 +149,7 @@ class ChatBotController {
         user_id: req.query.user_id,
         name: { $regex: req.query.q, $options: 'i' }
       });
+
       if (!conversation) {
         res.status(200).json([]);
         return;
@@ -274,6 +274,22 @@ class ChatBotController {
         return;
       }
       res.status(200).json({});
+    } catch (error) {
+      next(error);
+    }
+  }
+  async store(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    const { id } = req.params;
+    const state = req.body.state;
+    try {
+      const storeConversation = await Conversation.findOne({ conversation_id: id });
+      if (!storeConversation) {
+        res.status(404).json({ message: 'Không tìm thấy hội thoại' });
+        return;
+      }
+      storeConversation.store = state;
+      storeConversation.save();
+      res.status(200).json({ data: storeConversation });
     } catch (error) {
       next(error);
     }

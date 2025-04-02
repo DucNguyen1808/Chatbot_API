@@ -3,14 +3,14 @@ import errorHandler from './middlewares/errorHandler';
 import routes from '../src/routes';
 import { connectMongoDB } from './config/db';
 import * as createError from 'http-errors';
-import ExcelJS from 'exceljs';
-
 import cors from 'cors';
 import dotenv from 'dotenv';
-import Conversation from './models/Conversation';
+import path from 'path';
+
 dotenv.config();
 const app: Application = express();
 app.use(cors());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(express.json());
