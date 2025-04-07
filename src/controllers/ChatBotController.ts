@@ -119,7 +119,7 @@ class ChatBotController {
       const totalPages = Math.ceil(totalItems / limit);
 
       if (q != '') {
-        items = await Conversation.find({ name: { $regex: q, $options: 'i' } })
+        items = await Conversation.find({ name: { $regex: `.*${q}.*`, $options: 'i' } })
           .sort({ [sortBy.toString()]: sortOrder })
           .populate('user_id');
       } else {
