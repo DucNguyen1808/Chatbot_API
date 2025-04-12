@@ -2,7 +2,12 @@ import { NextFunction, Response } from 'express';
 import User from '~/models/User';
 import AuthenticatedRequest from '~/types/AuthenticatedRequest';
 import { getTimeFilter } from '~/utils/getTimeFilter';
+import crypto from 'crypto';
 import { z } from 'zod';
+import sendEmail from '~/utils/sendmail';
+import ExcelJS from 'exceljs';
+import Conversation from '~/models/Conversation';
+
 class UserController {
   async getProfile(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
@@ -55,11 +60,13 @@ class UserController {
         res.status(400).json({ mesages: 'id is required' });
         return;
       }
-      const user = await User.findByIdAndDelete(id);
+      const user = await User.findOneAndDelete({ _id: id });
+
       if (!user) {
         res.status(404).json({ mesages: 'user not exist' });
         return;
       }
+      await Conversation.deleteMany({ _id: { $in: user.conversation } });
       res.status(200).json({});
     } catch (err) {
       next(err);
@@ -199,6 +206,123 @@ class UserController {
       next(err);
     }
   }
+  async forgotPassword(req: AuthenticatedRequest, res: Response) {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Tạo token reset
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // Lưu token và hạn dùng
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 phút
+    await user.save();
+
+    const resetURL = `http://127.0.0.1:3000/forgot-password/${resetToken}`;
+    const message = `Click vào link để đặt lại mật khẩu: \n\n ${resetURL}`;
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Yêu cầu đặt lại mật khẩu',
+        text: message
+      });
+
+      res.json({ message: 'Đã gửi email đặt lại mật khẩu' });
+    } catch (error) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+      res.status(500).json({ message: 'Gửi email thất bại' });
+    }
+  }
+
+  async resetPassword(req: AuthenticatedRequest, res: Response) {
+    const hashedToken = crypto.createHash('sha256').update(req.body.token).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+    if (!user) {
+      res.status(400).json({ message: 'Token không hợp lệ hoặc đã hết hạn' });
+      return;
+    }
+
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+    res.json({ message: 'Mật khẩu đã được cập nhật thành công' });
+  }
+  async statistical(req: AuthenticatedRequest, res: Response) {
+    const now = new Date();
+    const lastYear = new Date();
+    lastYear.setFullYear(now.getFullYear() - 1);
+
+    const stats = await User.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: lastYear } // 👈 chỉ lấy user 1 năm gần đây
+        }
+      },
+      {
+        $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: {
+          '_id.year': 1,
+          '_id.month': 1
+        }
+      }
+    ]);
+    res.status(200).json({ data: stats });
+  }
+  exportUsersToExcel = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const users = await User.find().lean();
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Users');
+
+      // Thêm tiêu đề cột
+      worksheet.columns = [
+        { header: 'STT', key: 'index', width: 6 },
+        { header: 'Tên', key: 'name', width: 25 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Vai trò', key: 'role', width: 12 },
+        { header: 'Ngày tạo', key: 'createdAt', width: 20 }
+      ];
+
+      // Ghi dữ liệu
+      users.forEach((user, index) => {
+        worksheet.addRow({
+          index: index + 1,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          createdAt: new Date(user.createdAt).toLocaleString('vi-VN')
+        });
+      });
+
+      // Thiết lập header để tải về
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=user.xlsx');
+
+      // Ghi workbook vào response stream
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 const userController = new UserController();
