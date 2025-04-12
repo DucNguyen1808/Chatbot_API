@@ -46,12 +46,12 @@ class IframeController {
   }
   async show(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const id = req.params.id;
-      const prompt = await Iframe.findById(id);
+      const prompt = await Iframe.findOne();
       if (!prompt) {
         res.status(404).json({ mesages: 'Iframe not exist' });
         return;
       }
+      console.log(prompt);
       res.status(200).json({ data: prompt });
     } catch (err) {
       next(err);
@@ -62,11 +62,7 @@ class IframeController {
       const data = req.body;
       const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
       data.icon = imageUrl;
-      const existingIframe = await Iframe.findOne({ user: data.user });
-      if (existingIframe) {
-        res.status(400).json({ mesages: 'Iframe đã tồn tại cho user này' });
-        return;
-      }
+
       const iframe = new Iframe(data);
       iframe.save();
       const user = await User.findById(data.user);

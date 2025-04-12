@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
 import argon2 from 'argon2';
 import mongoose, { Schema, model } from 'mongoose';
-import { boolean } from 'zod';
+import { boolean, string } from 'zod';
+import Conversation from './Conversation';
 export interface IUser {
   name?: string;
   email: string;
@@ -12,7 +13,12 @@ export interface IUser {
   conversation: [mongoose.Types.ObjectId];
   role: 'user' | 'admin';
   Iframe: mongoose.Types.ObjectId;
+  support: [mongoose.Types.ObjectId];
+  resetPasswordToken: string | undefined;
+  resetPasswordExpire: number | undefined;
   state: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 const userSchema = new Schema<IUser>(
   {
@@ -24,10 +30,14 @@ const userSchema = new Schema<IUser>(
     conversation: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' }],
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     Iframe: { type: mongoose.Schema.Types.ObjectId, ref: 'Iframe' },
-    state: { type: Boolean, default: true }
+    support: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Iframe' }],
+    state: { type: Boolean, default: true },
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Number }
   },
   { timestamps: true }
 );
+
 userSchema.methods.checkPassword = async function (password: string) {
   return argon2.verify(this.password, password);
 };

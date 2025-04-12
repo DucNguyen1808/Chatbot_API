@@ -8,20 +8,53 @@ import createHttpError from 'http-errors';
 import ExcelJS from 'exceljs';
 import { console } from 'inspector';
 import { getTimeFilter } from '~/utils/getTimeFilter';
+import Setting from '~/models/Setting';
+import Iframe from '~/models/Iframe';
+
+function regulations(content: string) {
+  return `<HEAD>
+Quy tắc:
+- Định dạng câu trả lời bằng **Markdown**.
+- Link phải dùng cú pháp: [tên](https://link), ví dụ: [OpenAI](https://openai.com)
+- Dùng tiêu đề với dấu \`#\`, danh sách \`-\` hoặc \`1.\`, và đoạn văn rõ ràng.
+- Nếu có code, đặt trong khối \`\`\` ngôn ngữ \`\`\`.
+- Các công thức toán học phải được viết bằng cú pháp LaTeX:
+  + Công thức inline: dùng \`$...$\`, ví dụ: $E = mc^2$
+  + Công thức khối: dùng \`$$...$$\`, ví dụ:
+    $$
+    \\int_a^b f(x)\\,dx = F(b) - F(a)
+    $$  
+</HEAD>
+<CONTENT>${content}</CONTENT>`;
+}
 class ChatBotController {
   async chatMessages(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       console.log(req.body.conversation_id);
+      const setting = await Setting.find();
+      if (setting.length < 0) {
+        next(createHttpError[403]('Không có apikey'));
+        return;
+      }
+      const apiKey = setting[0].api_key;
       const user = await User.findById(req.body.user);
-      const result = await http.post<chatMessagesRes>('/chat-messages', {
-        // hoten: 'Nhập tên',
-        inputs: { hoten: 'ABC' },
-        query: req.body.query,
-        response_mode: 'blocking',
-        files: [],
-        conversation_id: req.body.conversation_id,
-        user: req.body.user
-      });
+      const result = await http.post<chatMessagesRes>(
+        '/chat-messages',
+        {
+          // hoten: 'Nhập tên',
+          inputs: { hoten: 'ABC' },
+          query: regulations(req.body.query),
+          response_mode: 'blocking',
+          files: [],
+          conversation_id: req.body.conversation_id,
+          user: req.body.user
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`
+          }
+        }
+      );
 
       const data = result.data;
       const findconversation = await Conversation.findOne({ conversation_id: data.conversation_id });
@@ -38,6 +71,70 @@ class ChatBotController {
         await conversation.save();
         user?.conversation.push(conversation._id);
         await user?.save();
+        res
+          .status(200)
+          .json({ data: { conversation_id: conversation.conversation_id, mesagess: conversation.mesagess.at(-1) } });
+        return;
+      }
+
+      findconversation?.mesagess.push({
+        query: req.body.query,
+        answer: data.answer
+      });
+      await findconversation?.save();
+      res.status(200).json({
+        data: { conversation_id: findconversation.conversation_id, mesagess: findconversation.mesagess.at(-1) }
+      });
+      return;
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async chatMessagesPopup(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      console.log(req.body.conversation_id);
+      const setting = await Setting.find();
+      if (setting.length < 0) {
+        next(createHttpError[403]('Không có apikey'));
+        return;
+      }
+      const apiKey = setting[0].api_key;
+
+      const result = await http.post<chatMessagesRes>(
+        '/chat-messages',
+        {
+          // hoten: 'Nhập tên',
+          inputs: { hoten: 'ABC' },
+          query: regulations(req.body.query),
+          response_mode: 'blocking',
+          files: [],
+          conversation_id: req.body.conversation_id,
+          user: req.body.user
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`
+          }
+        }
+      );
+
+      const data = result.data;
+      const findconversation = await Conversation.findOne({ conversation_id: data.conversation_id });
+      console.log(findconversation);
+      if (!findconversation) {
+        const conversation = new Conversation({
+          conversation_id: data.conversation_id,
+
+          bot_id: '1234',
+
+          mesagess: [{ query: req.body.query, answer: data.answer }],
+          name: req.body.query,
+          iframe: true
+        });
+
+        await conversation.save();
+
         res
           .status(200)
           .json({ data: { conversation_id: conversation.conversation_id, mesagess: conversation.mesagess.at(-1) } });
@@ -101,6 +198,23 @@ class ChatBotController {
       next(error);
     }
   }
+
+  async getListChatByIframe(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const conversation = await Conversation.findOne({
+        conversation_id: req.query.conversation_id,
+        iframe: true
+      });
+      if (!conversation) {
+        res.status(404).json({ mesages: 'Conversation not exit' });
+        return;
+      }
+      res.status(200).json(conversation);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getConversation(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const query = req.query;
@@ -119,7 +233,7 @@ class ChatBotController {
       const totalPages = Math.ceil(totalItems / limit);
 
       if (q != '') {
-        items = await Conversation.find({ name: { $regex: q, $options: 'i' } })
+        items = await Conversation.find({ name: { $regex: `.*${q}.*`, $options: 'i' } })
           .sort({ [sortBy.toString()]: sortOrder })
           .populate('user_id');
       } else {
@@ -211,8 +325,13 @@ class ChatBotController {
           let email = '';
           if (index == 0) {
             cvs_id = conversation.conversation_id || '';
-            userName = conversation.user_id.name?.toString();
-            email = conversation.user_id.email?.toString();
+            if (conversation.user_id) {
+              userName = conversation.user_id.name?.toString();
+              email = conversation.user_id.email?.toString();
+            } else {
+              userName = 'Iframe';
+              email = '';
+            }
           }
           worksheet.addRow({
             conversation_id: cvs_id,
@@ -293,6 +412,48 @@ class ChatBotController {
     } catch (error) {
       next(error);
     }
+  }
+  async reName(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    const { id } = req.params;
+    const name = req.body.name;
+    try {
+      const storeConversation = await Conversation.findOne({ conversation_id: id });
+      if (!storeConversation) {
+        res.status(404).json({ message: 'Không tìm thấy hội thoại' });
+        return;
+      }
+      storeConversation.name = name;
+      storeConversation.save();
+      res.status(200).json({ data: storeConversation });
+    } catch (error) {
+      next(error);
+    }
+  }
+  async statistical(req: AuthenticatedRequest, res: Response) {
+    const now = new Date();
+    const lastYear = new Date();
+    lastYear.setFullYear(now.getFullYear() - 1);
+
+    const stats = await Conversation.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: lastYear } // 👈 chỉ lấy user 1 năm gần đây
+        }
+      },
+      {
+        $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: {
+          '_id.year': 1,
+          '_id.month': 1
+        }
+      }
+    ]);
+    res.status(200).json({ data: stats });
   }
 }
 const chatBotController = new ChatBotController();

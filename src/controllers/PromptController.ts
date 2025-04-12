@@ -23,6 +23,8 @@ class PromptController {
         items = await Prompt.find({ content: { $regex: q, $options: 'i' } }).sort({
           [sortBy.toString()]: sortOrder
         });
+      } else if (limit == -1) {
+        items = await Prompt.find();
       } else {
         items = await Prompt.find(filter)
           .sort({ [sortBy.toString()]: sortOrder })

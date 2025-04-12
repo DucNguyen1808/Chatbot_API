@@ -14,4 +14,10 @@ const Iframe = new mongoose.Schema(
   },
   { timestamps: true }
 );
+Iframe.pre('save', async function (next) {
+  if (this.isNew) {
+    await mongoose.model('Iframe').deleteMany({});
+  }
+  next();
+});
 export default mongoose.model('Iframe', Iframe);

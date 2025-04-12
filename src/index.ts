@@ -6,6 +6,9 @@ import * as createError from 'http-errors';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import passport from 'passport';
+import './config/passport';
+import * as jwt from 'jsonwebtoken';
 
 dotenv.config();
 const app: Application = express();

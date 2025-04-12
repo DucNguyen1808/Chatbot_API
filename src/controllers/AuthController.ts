@@ -4,6 +4,9 @@ import { createAccsesToken, createRefreshToken, verifyRefreshToken } from '~/uti
 import getBearerToken from '~/utils/getBearerToken';
 import { LoginsChema, RegisterChema } from '~/validations/AuthValidate';
 const EXPIRES_IN = 24 * 60 * 60 * 1000;
+import { OAuth2Client } from 'google-auth-library';
+import jwt from 'jsonwebtoken';
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
@@ -76,6 +79,49 @@ class AuthController {
       next(error);
     }
   }
+  loginWithGoogle = async (req: Request, res: Response) => {
+    const { token } = req.body; // token từ frontend gửi lên (Google ID token)
+
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+
+      const payload = ticket.getPayload();
+      const { sub, email, name, picture } = payload;
+
+      // Kiểm tra user đã tồn tại chưa
+      let user = await User.findOne({ email });
+
+      if (!user) {
+        // Nếu chưa, tạo mới
+        user = await User.create({
+          name,
+          email,
+          avatar: picture,
+          google_id: sub,
+          password: Math.random().toString(36).slice(-8) // Fake password
+        });
+      }
+
+      // Tạo JWT
+      const accessToken = jwt.sign({ id: user._id }, process.env.ACCESS_TOKEN_SECRET || '', {
+        expiresIn: '7d'
+      });
+      const now = new Date();
+      const tenMinutesLater = new Date(now.getTime() + EXPIRES_IN);
+      res.status(200).json({
+        status_code: 200,
+        message: 'Login with Google success',
+        accsessToken: accessToken,
+        expiredAt: tenMinutesLater
+      });
+    } catch (error) {
+      console.error('Login with Google failed', error);
+      res.status(401).json({ message: 'Google token is invalid' });
+    }
+  };
 }
 
 const authController = new AuthController();

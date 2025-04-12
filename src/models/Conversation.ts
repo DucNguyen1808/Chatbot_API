@@ -10,12 +10,13 @@ export const Mesages = new mongoose.Schema({
 const Conversation = new mongoose.Schema(
   {
     conversation_id: String,
-    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     name: { type: String, require },
     bot_id: { type: String, require },
     mesagess: [Mesages],
     store: { type: Boolean, default: false },
-    share: { type: Boolean, default: false }
+    share: { type: Boolean, default: false },
+    iframe: { type: Boolean, default: false }
   },
   { timestamps: true }
 );
