@@ -12,7 +12,6 @@ export interface IUser {
   checkPassword: (password: string) => Promise<boolean>;
   conversation: [mongoose.Types.ObjectId];
   role: 'user' | 'admin';
-  Iframe: mongoose.Types.ObjectId;
   support: [mongoose.Types.ObjectId];
   resetPasswordToken: string | undefined;
   resetPasswordExpire: number | undefined;
@@ -29,7 +28,6 @@ const userSchema = new Schema<IUser>(
     google_id: String,
     conversation: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' }],
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
-    Iframe: { type: mongoose.Schema.Types.ObjectId, ref: 'Iframe' },
     support: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Iframe' }],
     state: { type: Boolean, default: true },
     resetPasswordToken: { type: String },

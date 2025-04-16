@@ -6,6 +6,7 @@ import promptRouter from './promptRouter';
 import iframeRouter from './iframeRouter';
 import settingRouter from './settingRouter';
 import supportRouter from './supportRouter';
+import StatisticalRouter from './statisticalRouter';
 function routes(app: Application) {
   app.get('/api', (req, res) => {
     console.log('123');
@@ -19,6 +20,7 @@ function routes(app: Application) {
   app.use('/api/iframe', iframeRouter);
   app.use('/api/setting', settingRouter);
   app.use('/api/support', supportRouter);
+  app.use('/api/', StatisticalRouter);
 }
 
 export default routes;

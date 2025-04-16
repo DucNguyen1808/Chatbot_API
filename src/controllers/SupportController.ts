@@ -4,9 +4,12 @@ import { createSupportSchema, replySupportSchema } from '~/validations/support';
 import Support from '~/models/Support';
 import User from '~/models/User';
 import mongoose from 'mongoose';
+import { getTimeFilter } from '~/utils/getTimeFilter';
 
 class PromptController {
   async reqSupport(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
+    req.body.attachment = imageUrl;
     const parseResult = createSupportSchema.safeParse(req.body);
 
     if (!parseResult.success) {
@@ -14,7 +17,7 @@ class PromptController {
       return;
     }
 
-    const { subject, message, attachments, priority, user_id } = parseResult.data;
+    const { subject, message, attachment, priority, user_id, category } = parseResult.data;
     if (!mongoose.Types.ObjectId.isValid(user_id)) {
       res.status(400).json({ message: 'Invalid user ID' });
       return;
@@ -30,7 +33,8 @@ class PromptController {
         subject,
         message,
         user_id,
-        attachments,
+        attachment,
+        category,
         priority: parseInt(priority ?? '2') // fallback to 2 if undefined
       });
 
@@ -71,15 +75,27 @@ class PromptController {
   }
   async supportByUser(req: Request, res: Response, next: NextFunction) {
     const { id } = req.params;
-
+    const query = req.query;
+    const q = query.q || '';
+    const page = parseInt(query.page as string) || 1;
+    const limit = parseInt(query.limit as string) || 10;
+    const totalItems = await Support.countDocuments({ user_id: id });
+    const totalPages = Math.ceil(totalItems / limit);
     if (!mongoose.Types.ObjectId.isValid(id)) {
       res.status(400).json({ message: 'Invalid user ID' });
       return;
     }
-
+    let supports;
     try {
-      const supports = await Support.find({ user_id: id }).sort({ createdAt: -1 });
-      res.status(200).json(supports);
+      if (q == '') {
+        supports = await Support.find({ user_id: id })
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit);
+      } else {
+        supports = await Support.find({ subject: { $regex: q, $options: 'i' } });
+      }
+      res.status(200).json({ data: supports, page, limit, totalPages, totalItems });
       return;
     } catch (error) {
       next(error);
@@ -87,8 +103,62 @@ class PromptController {
   }
   async index(req: Request, res: Response, next: NextFunction) {
     try {
-      const supports = await Support.find().sort({ createdAt: -1 }); // newest first
-      res.status(200).json(supports);
+      const query = req.query;
+      const q = query.q || '';
+      const { timeFilter } = req.query as { timeFilter?: string };
+      const filter = getTimeFilter(timeFilter || '');
+      const { sortBy = 'createdAt', order = 'desc' } = req.query;
+      const sortOrder = order === 'asc' ? 1 : -1;
+      let items;
+
+      const page = parseInt(query.page as string) || 1;
+      const limit = parseInt(query.limit as string) || 10;
+      const totalItems = await Support.countDocuments();
+      const totalPages = Math.ceil(totalItems / limit);
+      if (q != '') {
+        items = await Support.find({
+          $or: [{ message: { $regex: q, $options: 'i' } }, { subject: { $regex: q, $options: 'i' } }]
+        }).sort({
+          [sortBy.toString()]: sortOrder
+        });
+      } else if (limit == -1) {
+        items = await Support.find();
+      } else {
+        items = await Support.find(filter)
+          .sort({ [sortBy.toString()]: sortOrder })
+          .skip((page - 1) * limit)
+          .limit(limit);
+      }
+
+      res.status(200).json({
+        page,
+        limit,
+        totalPages,
+        totalItems,
+        data: items
+      });
+      return;
+    } catch (err) {
+      next(err);
+    }
+  }
+  async delete(req: Request, res: Response, next: NextFunction) {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ message: 'Invalid support ID' });
+      return;
+    }
+
+    try {
+      const deleted = await Support.findByIdAndDelete(id);
+
+      if (!deleted) {
+        res.status(404).json({ message: 'Support request not found' });
+        return;
+      }
+
+      res.status(200).json({ message: 'Support request deleted successfully' });
       return;
     } catch (error) {
       next(error);

@@ -19,6 +19,10 @@ class AuthController {
       const { password, email } = data;
 
       const user = await User.findOne({ email });
+      if (!user?.state) {
+        res.status(404).json({ status_code: 403, message: 'Tài khoản này đã bị khóa' });
+        return;
+      }
       if (!user) {
         res.status(404).json({ status_code: 404, message: 'Email này chưa được đăng ký' });
         return;

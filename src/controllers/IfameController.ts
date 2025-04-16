@@ -1,10 +1,6 @@
 import { NextFunction, Response } from 'express';
-import { Mesages } from '~/models/Conversation';
 import Iframe from '~/models/Iframe';
-import User from '~/models/User';
 import AuthenticatedRequest from '~/types/AuthenticatedRequest';
-import { getTimeFilter } from '~/utils/getTimeFilter';
-import { PromptsChema } from '~/validations/promptValidate';
 
 class IframeController {
   async index(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -62,16 +58,8 @@ class IframeController {
       const data = req.body;
       const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
       data.icon = imageUrl;
-
       const iframe = new Iframe(data);
       iframe.save();
-      const user = await User.findById(data.user);
-      if (!user) {
-        res.status(404).json({ mesages: 'user not exist' });
-        return;
-      }
-      user.Iframe = iframe._id;
-      user.save();
       res.status(201).json(iframe);
     } catch (err) {
       next(err);

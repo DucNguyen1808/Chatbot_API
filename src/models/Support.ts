@@ -6,23 +6,27 @@ const supportSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    category: {
+      type: String,
+      required: true
+    },
     message: {
       type: String,
       required: true
     },
-    attachments: {
-      type: String, // Nếu muốn hỗ trợ nhiều file, có thể dùng [String]
+    attachment: {
+      type: String,
       default: ''
     },
     status: {
       type: String,
-      enum: ['pending', 'resolved'], // hoặc tự định nghĩa thêm
+      enum: ['pending', 'resolved'],
       default: 'pending'
     },
     priority: {
       type: Number,
-      enum: [1, 2, 3], // 1 = cao, 2 = trung bình, 3 = thấp
-      default: 2
+      enum: [1, 2, 3],
+      default: 1
     },
     response: {
       type: String,

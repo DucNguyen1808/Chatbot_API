@@ -6,7 +6,7 @@ import { verifyAccsesToken } from '~/utils/jwt';
 
 const settingRouter = express.Router();
 
-settingRouter.post('/', SettingController.store);
-settingRouter.get('/', SettingController.index);
+settingRouter.post('/', verifyAccsesToken, checkAdmin, SettingController.store);
+settingRouter.get('/', verifyAccsesToken, checkAdmin, SettingController.index);
 
 export default settingRouter;
