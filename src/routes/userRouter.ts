@@ -7,12 +7,12 @@ import { verifyAccsesToken } from '~/utils/jwt';
 const userRouter = express.Router();
 
 userRouter.get('/get-profile', verifyAccsesToken, userController.getProfile);
-userRouter.get('/statistical', userController.statistical);
-userRouter.get('/get-all-user', userController.getAllProfile);
-userRouter.delete('/', userController.delete);
-userRouter.patch('/update-role', userController.updateRole);
-userRouter.patch('/block', userController.blockAccount);
-userRouter.patch('/change-password', userController.changePassword);
+userRouter.get('/statistical', verifyAccsesToken, checkAdmin, userController.statistical);
+userRouter.get('/get-all-user', verifyAccsesToken, checkAdmin, userController.getAllProfile);
+userRouter.delete('/', verifyAccsesToken, checkAdmin, userController.delete);
+userRouter.patch('/update-role', verifyAccsesToken, checkAdmin, userController.updateRole);
+userRouter.patch('/block', verifyAccsesToken, checkAdmin, userController.blockAccount);
+userRouter.patch('/change-password', verifyAccsesToken, userController.changePassword);
 userRouter.patch('/update-profile', verifyAccsesToken, upload.single('avatar'), userController.updateProfile);
 userRouter.post('/forgot-password', userController.forgotPassword);
 userRouter.patch('/reset-password', userController.resetPassword);

@@ -9,8 +9,7 @@ const Iframe = new mongoose.Schema(
     body_color: { type: String, require: true },
     mbox_color: { type: String, require: true },
     mbox_text_color: { type: String, require: true },
-    icon: { type: String, require: true },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    icon: { type: String, require: true }
   },
   { timestamps: true }
 );
