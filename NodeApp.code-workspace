@@ -1,0 +1,14 @@
+{
+  "folders": [
+	{
+		"path": "../../Học WEB/NodeApp"
+	},
+	{
+		"path": "."
+	},
+	{
+		"path": "../Chatbot_FE"
+	}
+],
+  "settings": {}
+}
